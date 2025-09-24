@@ -48,31 +48,11 @@
       .card{width:96px;height:134px}
       .shadow{width:104px;height:142px}
     }
-  .menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18)}.menu.hidden{display:none}.menu-panel{background:var(--panel);border:1px solid var(--panel-b);border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.35);padding:18px 20px;max-width:560px;width:min(92vw,560px);display:flex;flex-direction:column;gap:12px;align-items:center}.menu-panel h1{margin:.2rem 0 .4rem;font-size:1.6rem;color:#bbf7d0}.menu-panel p{margin:0;color:#cbd5e1;text-align:center}.menu-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.rules{background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;font-size:.95rem;color:#e2e8f0}
   </style>
 </head>
 <body>
   <div class="root" id="app">
     <div class="table" aria-live="polite">
-      <!-- Menú principal sobre la mesa (mismo repo) -->
-      <div class="menu" id="main-menu">
-        <div class="menu-panel">
-          <h1>Blackjack 21</h1>
-          <p>Juega en esta misma app. No necesitas otro repositorio para tener menú.</p>
-          <div class="menu-row">
-            <button class="btn ac" id="btn-play">Jugar</button>
-            <button class="btn" id="btn-rules">Reglas</button>
-          </div>
-          <div id="rules" class="rules hidden">
-            <ul style="margin:0;padding-left:20px;line-height:1.35">
-              <li>Blackjack paga <b>3:2</b>.</li>
-              <li>El crupier se planta en <b>17 suave</b> (S17).</li>
-              <li>Doblar solo con <b>2 cartas</b>.</li>
-              <li>Sin split / surrender (puedo añadirlos si quieres).</li>
-            </ul>
-          </div>
-        </div>
-      </div>
       <!-- Topbar sobre la mesa verde (reemplaza HUD) -->
       <div class="topbar" id="topbar">
         <span class="badge" id="chips-badge">Fichas: 1000</span>
@@ -448,20 +428,6 @@
   }
 
   // ---------- Eventos táctiles ----------
-  // Menú principal
-  function showMainMenu(show=true){
-    const m = document.getElementById('main-menu');
-    const controls = document.getElementById('controls');
-    if(show){ m.classList.remove('hidden'); controls.classList.add('hidden'); }
-    else { m.classList.add('hidden'); controls.classList.remove('hidden'); }
-  }
-  document.addEventListener('click', (e)=>{
-    const t = e.target;
-    if(t && t.id==='btn-play'){ showMainMenu(false); message('Coloca tu apuesta y pulsa LISTO'); }
-    if(t && t.id==='btn-rules'){ const box = document.getElementById('rules'); box.classList.toggle('hidden'); }
-  });
-
-  // ---------- Eventos táctiles ----------
   document.querySelectorAll('[data-chip]').forEach(el=>{
     el.addEventListener('click', ()=>{
       const v = parseInt(el.getAttribute('data-chip'),10);
@@ -528,8 +494,6 @@
 
   // Start
   initGame();
-  // Mostrar menú al cargar (mismo repo, sin navegar)
-  showMainMenu(true);
   </script>
 </body>
 </html>

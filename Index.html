@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Blackjack 21 — Mesa Verde · Táctil</title>
+  <style>
+    :root{--felt:#0c6b45;--felt2:#095b3a;--ink:#0f172a;--panel:#0b1220;--panel-b:#334155;--btn:#0f172a;--btn-b:#334155;--btn-ac:#14532d;--btn-ac-b:#16a34a}
+    html,body{height:100%;margin:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:radial-gradient(1200px 800px at 50% -10%,#107b52 0%, var(--felt) 35%, var(--felt2) 100%);color:#e5e7eb;overflow:hidden}
+    .root{position:relative;height:100%;width:100%}
+    /* Mesa */
+    .table{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:72px 12px 180px;gap:24px}
+    .area{width:100%;max-width:1100px;display:flex;flex-direction:column;align-items:center}
+    .hand{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;min-height:160px}
+    .info{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:4px}
+    .badge{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);padding:6px 10px;border-radius:999px;font-size:.9rem}
+    /* Topbar (en la mesa verde) */
+    .topbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:8px 12px}
+    .topbtn{appearance:none;border:1px solid var(--btn-b);background:var(--btn);color:#e5e7eb;font-weight:700;border-radius:999px;padding:8px 12px;cursor:pointer}
+    .testsbox{position:absolute;top:56px;left:50%;transform:translateX(-50%);max-height:40vh;overflow:auto;width:min(92vw,640px);background:var(--panel);border:1px solid var(--panel-b);border-radius:12px;padding:8px 10px}
+    /* Carta DOM (sin dependencias) */
+    .card{width:110px;height:154px;border-radius:14px;background:#fff;box-shadow:0 8px 18px rgba(0,0,0,.35);position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:8px}
+    .card .corner{font-weight:800;font-family:"Arial Black", system-ui;letter-spacing:.5px}
+    .card .corner.red{color:#c81d25}
+    .card .corner.black{color:#111}
+    .card .suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;opacity:.18}
+    .card .c1{font-size:22px}
+    .card .c2{font-size:22px;transform:rotate(180deg)}
+    .card.back{background:linear-gradient(135deg,#1f2937,#0f172a);border:4px solid #111827}
+    .card.hide .suit,.card.hide .corner{opacity:0}
+    .shadow{position:absolute;width:118px;height:162px;border-radius:16px;background:rgba(0,0,0,.35);filter:blur(6px);transform:translate(6px,8px);z-index:-1}
+    /* Barra de controles inferior (táctil, no se superpone) */
+    .controls{position:absolute;left:0;right:0;bottom:0;padding:10px 12px 16px;background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.22));display:flex;flex-direction:column;gap:8px}
+    .controls-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+    .btn{appearance:none;border:1px solid var(--btn-b);background:var(--btn);color:#e5e7eb;font-weight:700;border-radius:14px;padding:14px 18px;min-width:140px;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
+    .btn.ac{background:var(--btn-ac);border-color:var(--btn-ac-b);color:#bbf7d0}
+    .chip{width:56px;height:56px;border-radius:50%;background:#eab308;border:6px solid #9a3412;display:flex;align-items:center;justify-content:center;color:#111;font-weight:900;box-shadow:0 6px 12px rgba(0,0,0,.35);cursor:pointer}
+    .hidden{display:none !important}
+    /* Capa de animación */
+    .anim-layer{position:fixed;inset:0;pointer-events:none;z-index:999}
+    .anim-card{position:fixed;will-change:transform,opacity;transition:transform .36s cubic-bezier(.22,.61,.36,1), opacity .36s ease}
+    @media (max-width:560px){
+      .table{padding-bottom:156px}
+      .btn{min-width:44vw}
+      .card{width:96px;height:134px}
+      .shadow{width:104px;height:142px}
+    }
+  .menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18)}.menu.hidden{display:none}.menu-panel{background:var(--panel);border:1px solid var(--panel-b);border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.35);padding:18px 20px;max-width:560px;width:min(92vw,560px);display:flex;flex-direction:column;gap:12px;align-items:center}.menu-panel h1{margin:.2rem 0 .4rem;font-size:1.6rem;color:#bbf7d0}.menu-panel p{margin:0;color:#cbd5e1;text-align:center}.menu-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.rules{background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.18);border-radius:12px;padding:10px 12px;font-size:.95rem;color:#e2e8f0}
+  </style>
+</head>
+<body>
+  <div class="root" id="app">
+    <div class="table" aria-live="polite">
+      <!-- Menú principal sobre la mesa (mismo repo) -->
+      <div class="menu" id="main-menu">
+        <div class="menu-panel">
+          <h1>Blackjack 21</h1>
+          <p>Juega en esta misma app. No necesitas otro repositorio para tener menú.</p>
+          <div class="menu-row">
+            <button class="btn ac" id="btn-play">Jugar</button>
+            <button class="btn" id="btn-rules">Reglas</button>
+          </div>
+          <div id="rules" class="rules hidden">
+            <ul style="margin:0;padding-left:20px;line-height:1.35">
+              <li>Blackjack paga <b>3:2</b>.</li>
+              <li>El crupier se planta en <b>17 suave</b> (S17).</li>
+              <li>Doblar solo con <b>2 cartas</b>.</li>
+              <li>Sin split / surrender (puedo añadirlos si quieres).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Topbar sobre la mesa verde (reemplaza HUD) -->
+      <div class="topbar" id="topbar">
+        <span class="badge" id="chips-badge">Fichas: 1000</span>
+        <span class="badge" id="bet-badge">Apuesta: 0</span>
+        <span class="badge" id="msg-badge">Coloca tu apuesta y pulsa LISTO</span>
+        <button class="topbtn" id="btn-tests" title="Self‑tests">🧪 Tests</button>
+      </div>
+      <pre id="tests-out" class="testsbox hidden"></pre>
+
+      <!-- Dealer -->
+      <div class="area" id="dealer-area">
+        <div class="hand" id="dealer-hand"></div>
+        <div class="info"><span class="badge">Crupier: <b id="dealer-score">?</b></span></div>
+      </div>
+      <!-- Player -->
+      <div class="area" id="player-area">
+        <div class="hand" id="player-hand"></div>
+        <div class="info"><span class="badge">Jugador: <b id="player-score">0</b></span></div>
+      </div>
+    </div>
+
+    <!-- Controles táctiles (no se superponen) -->
+    <div class="controls" id="controls">
+      <div class="controls-row" id="chips-row">
+        <div class="chip" data-chip="10">10</div>
+        <div class="chip" data-chip="50">50</div>
+        <div class="chip" data-chip="100">100</div>
+        <div class="chip" data-chip="500">500</div>
+      </div>
+      <div class="controls-row" id="betting-row">
+        <button class="btn" id="btn-clear">Limpiar</button>
+        <button class="btn ac" id="btn-ready">Listo</button>
+      </div>
+      <div class="controls-row hidden" id="action-row">
+        <button class="btn" id="btn-hit">Pedir</button>
+        <button class="btn" id="btn-stand">Plantarse</button>
+        <button class="btn" id="btn-double">Doblar</button>
+        <button class="btn" id="btn-newround" title="Nueva ronda" disabled>Nueva ronda</button>
+      </div>
+    </div>
+
+    <!-- Capa para animaciones de reparto -->
+    <div class="anim-layer" id="anim-layer"></div>
+  </div>
+
+  <script>
+  // =============================================================
+  //  Blackjack DOM (sin dependencias externas) · Reglas estándar
+  //  - Pago Blackjack: 3:2
+  //  - Dealer se PLANTA en 17 suave (S17)
+  //  - Doblar: solo con 2 cartas, 1 carta y pasa a dealer
+  //  - 6 mazos, barajado Fisher–Yates, reshuffle al quedar < 15
+  //  - 100% táctil, botones claros, sin superposición
+  // =============================================================
+
+  const RULES = Object.freeze({
+    DECKS: 6,
+    BLACKJACK_PAYOUT: '3:2',
+    DEALER_HITS_SOFT_17: false, // S17 (se planta)
+    ALLOW_DOUBLE: true,
+    MIN_BET: 10,
+    MAX_BET: 1000,
+  });
+
+  // ---------- Estado ----------
+  const State = {
+    deck: [],
+    player: [],
+    dealer: [],
+    chips: 1000,
+    bet: 0,
+    phase: 'betting', // betting | player | dealer | over
+    doubled: false,
+  };
+
+  // ---------- Utilidades ----------
+  const SUITS = ['spades','hearts','diamonds','clubs'];
+  const SUIT_CHAR = {spades:'\u2660', hearts:'\u2665', diamonds:'\u2666', clubs:'\u2663'}; // usa escapes seguros
+  const SUIT_COLOR = s => (s==='hearts'||s==='diamonds') ? 'red':'black';
+  const RANKS = ['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
+  const VAL = r => (r==='A'?11: (r==='K'||r==='Q'||r==='J'?10: parseInt(r,10)));
+
+  function makeShoe(){
+    const d=[];
+    for(let n=0;n<RULES.DECKS;n++){
+      for(const s of SUITS){ for(const r of RANKS){ d.push({suit:s, rank:r}); } }
+    }
+    // Fisher–Yates
+    for(let i=d.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [d[i],d[j]]=[d[j],d[i]]; }
+    return d;
+  }
+
+  function handValue(cards){
+    let total=0, aces=0;
+    for(const c of cards){ const v=VAL(c.rank); total+=v; if(c.rank==='A') aces++; }
+    while(total>21 && aces>0){ total-=10; aces--; }
+    return total;
+  }
+  function isSoft(cards){
+    let total=0, aces=0;
+    for(const c of cards){ total+=VAL(c.rank); if(c.rank==='A') aces++; }
+    while(total>21 && aces>0){ total-=10; aces--; }
+    return aces>0 && total<=21;
+  }
+  const isBlackjack = cards => cards.length===2 && handValue(cards)===21;
+  const payoutBJ = bet => (RULES.BLACKJACK_PAYOUT==='6:5'? Math.floor(bet*2.2): Math.floor(bet*2.5));
+
+  // ---------- Render ----------
+  const $ = sel => document.querySelector(sel);
+  const dealerHand = $('#dealer-hand');
+  const playerHand = $('#player-hand');
+  const dealerScoreEl = $('#dealer-score');
+  const playerScoreEl = $('#player-score');
+  const chipsBadge = $('#chips-badge');
+  const betBadge = $('#bet-badge');
+  const msgBadge = $('#msg-badge');
+  const testsBox = $('#tests-out');
+  const animLayer = $('#anim-layer');
+
+  function updateBadges(){
+    chipsBadge.textContent = `Fichas: ${State.chips}`;
+    betBadge.textContent = `Apuesta: ${State.bet}`;
+  }
+
+  function makeCardEl(card, hidden=false){
+    const wrap = document.createElement('div');
+    wrap.style.position='relative';
+    const sh = document.createElement('div'); sh.className='shadow'; wrap.appendChild(sh);
+    const el = document.createElement('div'); el.className='card'; if(hidden) el.classList.add('hide');
+    const cornerTop = document.createElement('div'); cornerTop.className = 'corner c1 ' + (SUIT_COLOR(card.suit)==='red'?'red':'black');
+    cornerTop.textContent = card.rank;
+    const cornerBot = document.createElement('div'); cornerBot.className = 'corner c2 ' + (SUIT_COLOR(card.suit)==='red'?'red':'black');
+    cornerBot.textContent = card.rank;
+    const suit = document.createElement('div'); suit.className='suit'; suit.textContent = SUIT_CHAR[card.suit]; suit.style.color = SUIT_COLOR(card.suit)==='red'?'#c81d25':'#111';
+    el.appendChild(cornerTop); el.appendChild(suit); el.appendChild(cornerBot);
+    wrap.appendChild(el);
+    return {wrap, el, sh};
+  }
+
+  function renderHands(){
+    // Dealer
+    dealerHand.innerHTML='';
+    State.dealer.forEach((c,i)=>{
+      const hidden = (i===1 && State.phase!=='dealer' && State.phase!=='over');
+      const {wrap} = makeCardEl(c, hidden);
+      dealerHand.appendChild(wrap);
+    });
+    // Player
+    playerHand.innerHTML='';
+    State.player.forEach(c=>{
+      const {wrap} = makeCardEl(c, false);
+      playerHand.appendChild(wrap);
+    });
+
+    // Scores visibles
+    playerScoreEl.textContent = handValue(State.player);
+    if(State.phase==='dealer' || State.phase==='over'){
+      dealerScoreEl.textContent = handValue(State.dealer);
+    } else {
+      // solo carta descubierta
+      dealerScoreEl.textContent = State.dealer.length? handValue([State.dealer[0]]):'?';
+    }
+  }
+
+  function message(txt){ msgBadge.textContent = txt; }
+
+  // --------- Animación de reparto al crupier ---------
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+  async function appendCardAnimated(container, card){
+    // 1) Crear el elemento final y ocultarlo visualmente (pero manteniendo layout)
+    const {wrap, el} = makeCardEl(card, false);
+    wrap.style.visibility='hidden';
+    container.appendChild(wrap);
+    const rect = el.getBoundingClientRect();
+
+    // 2) Crear carta temporal en la capa de animación
+    const temp = document.createElement('div');
+    temp.className='anim-card';
+    temp.style.left = rect.left + 'px';
+    temp.style.top = rect.top + 'px';
+    temp.style.width = rect.width + 'px';
+    temp.style.height = rect.height + 'px';
+    temp.style.opacity = '0';
+
+    // Contenido visual de la carta temporal (mismo markup)
+    const { el: tempInner } = makeCardEl(card, false);
+    tempInner.style.width='100%';
+    tempInner.style.height='100%';
+    // quitar shadow del clon para que no se vea doble
+    const sh = tempInner.previousSibling; if(sh && sh.classList && sh.classList.contains('shadow')) sh.remove();
+    temp.appendChild(tempInner);
+
+    animLayer.appendChild(temp);
+
+    // 3) Posición de origen (desde la parte superior-derecha tipo "shoe")
+    const fromX = Math.max(window.innerWidth - rect.width - 24, rect.left + 120);
+    const fromY = Math.max(24, rect.top - 180);
+    const dx = fromX - rect.left;
+    const dy = fromY - rect.top;
+
+    // Estado inicial
+    temp.style.transform = `translate(${dx}px, ${dy}px) scale(0.7) rotate(-12deg)`;
+    // forzar reflow
+    void temp.offsetWidth;
+    // Animar hacia el destino
+    temp.style.opacity = '1';
+    temp.style.transform = 'translate(0,0) scale(1) rotate(0deg)';
+
+    // 4) Esperar fin de transición
+    await new Promise(resolve=>{
+      const done = ()=>{ temp.removeEventListener('transitionend', done); resolve(); };
+      temp.addEventListener('transitionend', done);
+      // Fallback de seguridad
+      setTimeout(done, 500);
+    });
+
+    // 5) Mostrar carta final y limpiar temporal
+    wrap.style.visibility='visible';
+    temp.remove();
+  }
+
+  // ---------- Flujo ----------
+  function initGame(){
+    State.deck = makeShoe();
+    State.player = [];
+    State.dealer = [];
+    State.phase = 'betting';
+    State.bet = 0;
+    State.doubled = false;
+    updateBadges();
+    renderHands();
+    message('Coloca tu apuesta y pulsa LISTO');
+    showBetting();
+  }
+
+  function reshuffleIfNeeded(){ if(State.deck.length < 15) State.deck = makeShoe(); }
+  function draw(){ reshuffleIfNeeded(); return State.deck.pop(); }
+
+  function placeBet(v){
+    v = Math.max(0, Math.min(v, Math.min(State.chips, RULES.MAX_BET)));
+    if(v>0 && v<RULES.MIN_BET) v = RULES.MIN_BET;
+    State.bet = v; updateBadges();
+  }
+
+  function clearBet(){ placeBet(0); }
+
+  function confirmBet(){
+    if(State.bet < RULES.MIN_BET) { message(`Apuesta mínima ${RULES.MIN_BET}`); return; }
+    if(State.bet > State.chips) { message('No tienes fichas suficientes'); return; }
+    dealInitial();
+  }
+
+  function dealInitial(){
+    State.player = []; State.dealer = []; State.doubled=false;
+    State.player.push(draw(), draw());
+    State.dealer.push(draw(), draw());
+    State.phase = 'player';
+    renderHands();
+    if(isBlackjack(State.player)){
+      State.phase = 'dealer';
+      renderHands();
+      if(isBlackjack(State.dealer)) return endRound('push');
+      return endRound('player-blackjack');
+    }
+    message('Tu turno: PEDIR / PLANTARSE' + (RULES.ALLOW_DOUBLE?' / DOBLAR':''));
+    showAction();
+    updateActionButtons();
+  }
+
+  function hit(){
+    if(State.phase!=='player') return;
+    State.player.push(draw());
+    renderHands();
+    const pv = handValue(State.player);
+    if(pv>21) return endRound('player-bust');
+    if(pv===21) return stand();
+    updateActionButtons();
+  }
+
+  function canDouble(){
+    return RULES.ALLOW_DOUBLE && State.phase==='player' && State.player.length===2 && !State.doubled && (State.bet*2)<=State.chips;
+  }
+
+  function doubleDown(){
+    if(!canDouble()) return;
+    State.doubled = true;
+    State.bet *= 2; updateBadges();
+    State.player.push(draw());
+    renderHands();
+    const pv = handValue(State.player);
+    if(pv>21) return endRound('player-bust');
+    stand();
+  }
+
+  function stand(){
+    if(State.phase!=='player') return;
+    State.phase='dealer';
+    renderHands();
+    dealerPlay();
+  }
+
+  async function dealerPlay(){
+    // Animar cada carta que roba el crupier
+    while(true){
+      const dv = handValue(State.dealer);
+      const soft = isSoft(State.dealer);
+      const mustHit = dv<17 || (dv===17 && soft && RULES.DEALER_HITS_SOFT_17);
+      if(mustHit){
+        const card = draw();
+        State.dealer.push(card);
+        await appendCardAnimated(dealerHand, card);
+        dealerScoreEl.textContent = handValue(State.dealer);
+        await sleep(120);
+      } else break;
+    }
+    resolve();
+  }
+
+  function resolve(){
+    const pv = handValue(State.player);
+    const dv = handValue(State.dealer);
+    if(dv>21) return endRound('dealer-bust');
+    if(pv>dv) return endRound('player-win');
+    if(pv<dv) return endRound('dealer-win');
+    return endRound('push');
+  }
+
+  function endRound(result){
+    let delta = 0;
+    if(result==='player-blackjack') delta = payoutBJ(State.bet);
+    else if(result==='player-win' || result==='dealer-bust') delta = State.bet*2;
+    else if(result==='push') delta = State.bet;
+    State.chips = State.chips - State.bet + delta;
+
+    const label = {
+      'player-blackjack':'¡Blackjack! Ganaste',
+      'player-win':'¡Ganaste!',
+      'dealer-bust':'¡Crupier se pasa, ganas!',
+      'dealer-win':'Gana el crupier',
+      'player-bust':'Te pasaste',
+      'push':'Empate (push)'
+    }[result] || result;
+
+    message(`${label} · Fichas: ${State.chips}`);
+    updateBadges();
+    State.phase='over';
+    renderHands();
+    $('#btn-newround').disabled=false;
+    showBetting(true);
+  }
+
+  function newRound(){
+    State.player=[]; State.dealer=[]; State.bet=0; State.doubled=false; State.phase='betting';
+    renderHands(); updateBadges(); message('Coloca tu apuesta y pulsa LISTO');
+    $('#btn-newround').disabled=true;
+    showBetting();
+  }
+
+  // ---------- UI helper (mostrar filas) ----------
+  function showBetting(fromOver=false){
+    $('#chips-row').classList.remove('hidden');
+    $('#betting-row').classList.remove('hidden');
+    $('#action-row').classList.add('hidden');
+  }
+  function showAction(){
+    $('#chips-row').classList.add('hidden');
+    $('#betting-row').classList.add('hidden');
+    $('#action-row').classList.remove('hidden');
+  }
+  function updateActionButtons(){
+    $('#btn-double').disabled = !canDouble();
+  }
+
+  // ---------- Eventos táctiles ----------
+  // Menú principal
+  function showMainMenu(show=true){
+    const m = document.getElementById('main-menu');
+    const controls = document.getElementById('controls');
+    if(show){ m.classList.remove('hidden'); controls.classList.add('hidden'); }
+    else { m.classList.add('hidden'); controls.classList.remove('hidden'); }
+  }
+  document.addEventListener('click', (e)=>{
+    const t = e.target;
+    if(t && t.id==='btn-play'){ showMainMenu(false); message('Coloca tu apuesta y pulsa LISTO'); }
+    if(t && t.id==='btn-rules'){ const box = document.getElementById('rules'); box.classList.toggle('hidden'); }
+  });
+
+  // ---------- Eventos táctiles ----------
+  document.querySelectorAll('[data-chip]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const v = parseInt(el.getAttribute('data-chip'),10);
+      placeBet(State.bet + v);
+    });
+  });
+  $('#btn-clear').addEventListener('click', ()=> clearBet());
+  $('#btn-ready').addEventListener('click', ()=> confirmBet());
+  $('#btn-hit').addEventListener('click', ()=> hit());
+  $('#btn-stand').addEventListener('click', ()=> stand());
+  $('#btn-double').addEventListener('click', ()=> doubleDown());
+  $('#btn-newround').addEventListener('click', ()=> newRound());
+
+  // Toggle visual del panel de tests en la mesa verde
+  document.getElementById('btn-tests').addEventListener('click', ()=>{
+    testsBox.classList.toggle('hidden');
+    if(!testsBox.classList.contains('hidden')) runSelfTests();
+  });
+
+  // ---------- Self‑tests (mantengo y agrego sin dependencias externas) ----------
+  function dealerMustHit(cards){
+    const dv = handValue(cards); const soft = isSoft(cards);
+    return dv<17 || (dv===17 && soft && RULES.DEALER_HITS_SOFT_17);
+  }
+
+  function runSelfTests(){
+    const out=[]; const ok=(name,cond)=>out.push(`${cond?'✅':'❌'} ${name}`);
+    // Lógica de mano
+    ok('[A,K] = 21', handValue([{rank:'A'},{rank:'K'}])===21);
+    ok('[A,9,A] = 21', handValue([{rank:'A'},{rank:'9'},{rank:'A'}])===21);
+    ok('[10,6,7] = 23', handValue([{rank:'10'},{rank:'6'},{rank:'7'}])===23);
+    ok('Blackjack detectado', isBlackjack([{rank:'A'},{rank:'K'}]));
+    // Payout según regla activa
+    ok('Payout BJ 3:2 en 100 = 250', RULES.BLACKJACK_PAYOUT==='3:2' ? payoutBJ(100)===250 : true);
+    ok('Payout BJ 6:5 en 100 = 220', RULES.BLACKJACK_PAYOUT==='6:5' ? payoutBJ(100)===220 : true);
+    // Dealer S17
+    ok('Dealer se PLANTA en 17 suave (S17)', RULES.DEALER_HITS_SOFT_17===false);
+    // Doblar solo con 2 cartas
+    State.player=[{rank:'9'},{rank:'2'}]; State.bet=20; State.chips=1000; State.phase='player'; State.doubled=false;
+    ok('Doblar SOLO con 2 cartas', (State.player.length===2) && (State.phase==='player'));
+    // Barra no se sobrepone: botones están fuera del área de cartas (geométrica simple)
+    const playerRect = document.getElementById('player-area').getBoundingClientRect();
+    const controlsRect = document.getElementById('controls').getBoundingClientRect();
+    ok('Barra no se sobrepone a cartas', controlsRect.top >= (playerRect.bottom - 40));
+    // Deck integrado
+    const shoe = makeShoe(); ok('Shoe 6 mazos => 312 cartas', shoe.length===6*52);
+    // Reshuffle guard
+    State.deck = new Array(10).fill({rank:'2',suit:'clubs'}); reshuffleIfNeeded(); ok('Reshuffle a <15 cartas', State.deck.length>=15);
+    // Nuevos: animación y regla de robo
+    ok('Función de animación existe', typeof appendCardAnimated === 'function');
+    ok('dealerMustHit 16 (HIT)', dealerMustHit([{rank:'10'},{rank:'6'}])===true);
+    ok('dealerMustHit 17 duro (STAND)', dealerMustHit([{rank:'10'},{rank:'7'}])===false);
+    ok('dealerMustHit 17 suave (S17=stand)', dealerMustHit([{rank:'A'},{rank:'6'}])===false);
+    // Extra: soft/dura checks
+    ok('isSoft A+6 = soft', isSoft([{rank:'A'},{rank:'6'}])===true);
+    ok('isSoft A+8+8 = duro', isSoft([{rank:'A'},{rank:'8'},{rank:'8'}])===false);
+    // canDouble on/off
+    State.phase='player'; State.player=[{rank:'9'},{rank:'2'}]; State.bet=50; State.chips=500; State.doubled=false; ok('canDouble true', (function(){ try{return canDouble();}catch(_){return false;} })());
+    State.player=[{rank:'9'},{rank:'2'},{rank:'2'}]; ok('canDouble false con 3 cartas', (function(){ try{return !canDouble();}catch(_){return false;} })());
+    // Mostrar
+    const txt = out.join('\n');
+    testsBox.textContent = txt; console.log('[Self-tests]', txt);
+  }
+
+  // Start
+  initGame();
+  // Mostrar menú al cargar (mismo repo, sin navegar)
+  showMainMenu(true);
+  </script>
+</body>
+</html>

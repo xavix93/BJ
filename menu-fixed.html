@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Blackjack 21 — Menú</title>
+  <style>
+    :root{--felt:#0c6b45;--felt2:#095b3a;--panel:#0b1220;--panel-b:#334155;--btn:#0f172a;--btn-b:#334155;--btn-ac:#14532d;--btn-ac-b:#16a34a}
+    html,body{height:100%;margin:0}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:radial-gradient(1400px 900px at 50% -10%,#107b52 0%, var(--felt) 38%, var(--felt2) 100%);color:#e5e7eb;overflow:hidden}
+    .root{position:relative;height:100%;width:100%;display:flex;align-items:center;justify-content:center}
+    .wrap{width:min(92vw,720px);display:flex;flex-direction:column;gap:20px;align-items:center;justify-content:center;text-align:center}
+    .title{font-size:clamp(28px,6vw,56px);line-height:1.05;font-weight:900;color:#bbf7d0;text-shadow:0 6px 18px rgba(0,0,0,.35)}
+    .subtitle{margin-top:-6px;color:#d1fae5;opacity:.9}
+    .panel{margin-top:8px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:16px 18px;box-shadow:0 14px 28px rgba(0,0,0,.25)}
+    .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+    .btn{appearance:none;border:1px solid var(--btn-b);background:var(--btn);color:#e5e7eb;font-weight:800;border-radius:16px;padding:14px 22px;min-width:180px;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.25);text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+    .btn.ac{background:var(--btn-ac);border-color:var(--btn-ac-b);color:#bbf7d0}
+    .btn:active{transform:translateY(1px)}
+    .small{font-size:.95rem;opacity:.9}
+    .rules{margin-top:12px;background:rgba(0,0,0,.18);border:1px dashed rgba(255,255,255,.22);border-radius:12px;padding:12px 14px;text-align:left}
+    .rules h3{margin:.2rem 0 .6rem;font-size:1.05rem;color:#bbf7d0}
+    .rules ul{margin:0;padding-left:18px;line-height:1.45}
+    .footer{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:.9rem;opacity:.75}
+    .error{margin-top:10px;color:#fecaca;background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.45);padding:8px 10px;border-radius:12px;display:none}
+    @media (max-width:560px){ .btn{min-width:46vw} }
+  </style>
+</head>
+<body>
+  <!-- Menú independiente. Sube este archivo como menu.html en el mismo directorio que tu juego. -->
+  <div class="root">
+    <div class="wrap">
+      <div class="title">Blackjack 21</div>
+      <div class="subtitle">Mesa verde · 100% táctil</div>
+
+      <div class="panel">
+        <div class="row" style="margin-bottom:10px">
+          <!-- El href se auto-ajustará a index.html, game.html, blackjack.html o el que indiques por ?game= -->
+          <a class="btn ac" id="btn-play" href="./index.html">▶ Jugar</a>
+          <button class="btn" id="btn-rules" type="button">📜 Reglas</button>
+          <button class="btn" id="btn-options" type="button">⚙️ Opciones</button>
+        </div>
+        <div id="rules" class="rules" hidden>
+          <h3>Reglas</h3>
+          <ul>
+            <li>Blackjack paga <b>3:2</b>.</li>
+            <li>El crupier se <b>planta en 17 suave</b> (S17).</li>
+            <li>Doblar: solo con <b>2 cartas</b> (se reparte 1 carta y pasa al crupier).</li>
+            <li>Sin split / surrender (puedo añadirlos si los necesitas).</li>
+          </ul>
+        </div>
+        <div id="options" class="rules" hidden>
+          <h3>Opciones</h3>
+          <ul style="list-style:none;padding-left:0">
+            <li><label style="display:flex;align-items:center;gap:8px"><input id="opt-animations" type="checkbox" checked> Animaciones</label></li>
+            <li><label style="display:flex;align-items:center;gap:8px"><input id="opt-sound" type="checkbox"> Sonido (placeholder)</label></li>
+          </ul>
+          <div class="small">Las opciones se guardan en este navegador.</div>
+        </div>
+        <div id="menu-error" class="error"></div>
+      </div>
+
+      <div class="small">Sugerencia: publica <code>menu.html</code> como inicio en GitHub Pages y enlaza a tu archivo del juego.</div>
+    </div>
+
+    <div class="footer">© Tu Proyecto — Hecho con HTML/CSS/JS</div>
+  </div>
+
+  <script>
+    // --- Util: leer parámetro ?game=archivo.html para forzar destino ---
+    const params = new URLSearchParams(location.search);
+    const forced = params.get('game');
+    const candidates = forced ? [forced] : ['index.html','game.html','blackjack.html','play.html'];
+
+    const playLink = document.getElementById('btn-play');
+    const rulesBtn = document.getElementById('btn-rules');
+    const optBtn = document.getElementById('btn-options');
+    const rulesBox = document.getElementById('rules');
+    const optBox = document.getElementById('options');
+    const errBox = document.getElementById('menu-error');
+
+    rulesBtn.addEventListener('click', () => {
+      const show = rulesBox.hasAttribute('hidden');
+      rulesBox.toggleAttribute('hidden', !show);
+      optBox.setAttribute('hidden', '');
+    });
+    optBtn.addEventListener('click', () => {
+      const show = optBox.hasAttribute('hidden');
+      optBox.toggleAttribute('hidden', !show);
+      rulesBox.setAttribute('hidden', '');
+    });
+
+    function setError(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
+
+    async function pickDestination(){
+      // Si se abre como file:// no podemos hacer fetch HEAD de forma fiable
+      if(location.protocol === 'file:'){
+        playLink.href = './index.html';
+        if(forced) playLink.href = forced;
+        return; // confiar en estructura local
+      }
+      for(const c of candidates){
+        try{
+          const res = await fetch(c, { method: 'HEAD' });
+          if(res.ok){ playLink.href = c; return; }
+        }catch(_){ /* ignorar y probar siguiente */ }
+      }
+      // Si nada responde 200, dejamos el primero y mostramos ayuda
+      playLink.href = candidates[0];
+      setError(`No encontré el archivo del juego (probé: ${candidates.join(', ')}). Colócalo junto a menu.html o usa ?game=nombre.html`);
+    }
+
+    pickDestination();
+
+    // Persistencia simple de opciones
+    const ANIM_KEY = 'bj21:animations';
+    const SOUND_KEY = 'bj21:sound';
+    const animChk = document.getElementById('opt-animations');
+    const soundChk = document.getElementById('opt-sound');
+
+    try{
+      const a = localStorage.getItem(ANIM_KEY); if(a!==null) animChk.checked = a === '1';
+      const s = localStorage.getItem(SOUND_KEY); if(s!==null) soundChk.checked = s === '1';
+    }catch(_){ }
+
+    animChk.addEventListener('change', ()=>{ try{ localStorage.setItem(ANIM_KEY, animChk.checked ? '1' : '0'); }catch(_){} });
+    soundChk.addEventListener('change', ()=>{ try{ localStorage.setItem(SOUND_KEY, soundChk.checked ? '1' : '0'); }catch(_){} });
+  </script>
+</body>
+</html>

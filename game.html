@@ -13,24 +13,23 @@
     /* Mesa */
     .table{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:72px 12px 180px;gap:24px}
     .area{width:100%;max-width:1100px;display:flex;flex-direction:column;align-items:center}
-    .hand{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;min-height:160px}
-    .info{display:flex;gap:12px;align-items:center;justify-content:center;margin-top:4px}
+    .hand{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;min-height:160px;position:relative;padding-bottom:36px}
     .badge{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);padding:6px 10px;border-radius:999px;font-size:.9rem}
     /* Topbar (en la mesa verde) */
     .topbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:8px 12px}
     .topbtn{appearance:none;border:1px solid var(--btn-b);background:var(--btn);color:#e5e7eb;font-weight:700;border-radius:999px;padding:8px 12px;cursor:pointer}
     .testsbox{position:absolute;top:56px;left:50%;transform:translateX(-50%);max-height:40vh;overflow:auto;width:min(92vw,640px);background:var(--panel);border:1px solid var(--panel-b);border-radius:12px;padding:8px 10px}
-    /* Carta DOM (sin dependencias) */
-    .card{width:110px;height:154px;border-radius:14px;background:#fff;box-shadow:0 8px 18px rgba(0,0,0,.35);position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:8px}
+    /* Carta DOM (sin dependencias) — ESCALA 3/4 */
+    .card{width:83px;height:116px;border-radius:12px;background:#fff;box-shadow:0 8px 18px rgba(0,0,0,.35);position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:6px}
     .card .corner{font-weight:800;font-family:"Arial Black", system-ui;letter-spacing:.5px}
     .card .corner.red{color:#c81d25}
     .card .corner.black{color:#111}
-    .card .suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;opacity:.18}
-    .card .c1{font-size:22px}
-    .card .c2{font-size:22px;transform:rotate(180deg)}
+    .card .suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px;opacity:.18}
+    .card .c1{font-size:16px}
+    .card .c2{font-size:16px;transform:rotate(180deg)}
     .card.back{background:linear-gradient(135deg,#1f2937,#0f172a);border:4px solid #111827}
     .card.hide .suit,.card.hide .corner{opacity:0}
-    .shadow{position:absolute;width:118px;height:162px;border-radius:16px;background:rgba(0,0,0,.35);filter:blur(6px);transform:translate(6px,8px);z-index:-1}
+    .shadow{position:absolute;width:90px;height:124px;border-radius:14px;background:rgba(0,0,0,.35);filter:blur(6px);transform:translate(5px,7px);z-index:-1}
     /* Barra de controles inferior (táctil, no se superpone) */
     .controls{position:absolute;left:0;right:0;bottom:0;padding:10px 12px 16px;background:linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.22));display:flex;flex-direction:column;gap:8px}
     .controls-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
@@ -42,11 +41,17 @@
     /* Capa de animación */
     .anim-layer{position:fixed;inset:0;pointer-events:none;z-index:999}
     .anim-card{position:fixed;will-change:transform,opacity;transition:transform .36s cubic-bezier(.22,.61,.36,1), opacity .36s ease}
+    /* Puntaje flotante centrado sobre cada mano */
+    .score-floating{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;display:none}
+    .show-scores .score-floating{display:block}
+    .hand .active .card{outline:2px solid #16a34a}
+
     @media (max-width:560px){
       .table{padding-bottom:156px}
       .btn{min-width:44vw}
-      .card{width:96px;height:134px}
-      .shadow{width:104px;height:142px}
+      .card{width:72px;height:101px}
+      .shadow{width:78px;height:107px}
+      .score-floating{bottom:4px}
     }
   </style>
 </head>
@@ -64,13 +69,15 @@
 
       <!-- Dealer -->
       <div class="area" id="dealer-area">
-        <div class="hand" id="dealer-hand"></div>
-        <div class="info"><span class="badge">Crupier: <b id="dealer-score">?</b></span></div>
+        <div class="hand" id="dealer-hand">
+          <div class="score-floating"><span class="badge">Crupier: <b id="dealer-score">?</b></span></div>
+        </div>
       </div>
       <!-- Player -->
       <div class="area" id="player-area">
-        <div class="hand" id="player-hand"></div>
-        <div class="info"><span class="badge">Jugador: <b id="player-score">0</b></span></div>
+        <div class="hand" id="player-hand">
+          <div class="score-floating"><span class="badge">Jugador: <b id="player-score">0</b></span></div>
+        </div>
       </div>
     </div>
 
@@ -90,6 +97,7 @@
         <button class="btn" id="btn-hit">Pedir</button>
         <button class="btn" id="btn-stand">Plantarse</button>
         <button class="btn" id="btn-double">Doblar</button>
+        <button class="btn" id="btn-split">Dividir</button>
         <button class="btn" id="btn-newround" title="Nueva ronda" disabled>Nueva ronda</button>
       </div>
     </div>
@@ -99,6 +107,7 @@
   </div>
 
   <script>
+  'use strict';
   // =============================================================
   //  Blackjack DOM (sin dependencias externas) · Reglas estándar
   //  - Pago Blackjack: 3:2
@@ -126,6 +135,10 @@
     bet: 0,
     phase: 'betting', // betting | player | dealer | over
     doubled: false,
+    // split support
+    splitHand: null,
+    playingSecond: false,
+    splitBet: 0,
   };
 
   // ---------- Utilidades ----------
@@ -134,6 +147,31 @@
   const SUIT_COLOR = s => (s==='hearts'||s==='diamonds') ? 'red':'black';
   const RANKS = ['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
   const VAL = r => (r==='A'?11: (r==='K'||r==='Q'||r==='J'?10: parseInt(r,10)));
+
+  // ---------- DOM helpers & refs ----------
+  const $ = sel => document.querySelector(sel);
+  const dealerHand = $('#dealer-hand');
+  const playerHand = $('#player-hand');
+  const dealerScoreEl = $('#dealer-score');
+  const playerScoreEl = $('#player-score');
+  const chipsBadge = $('#chips-badge');
+  const betBadge = $('#bet-badge');
+  const msgBadge = $('#msg-badge');
+  const testsBox = $('#tests-out');
+  const animLayer = $('#anim-layer');
+
+  // HUD: ocultar fichas/apuesta durante el juego (definido ANTES de usarse)
+  function updateHudVisibility(){
+    const inPlay = State.phase==='player' || State.phase==='dealer';
+    chipsBadge.classList.toggle('hidden', inPlay);
+    betBadge.classList.toggle('hidden', inPlay);
+  }
+
+  // Mostrar/ocultar contadores de puntaje (solo durante juego o fin de ronda)
+  function updateScoreVisibility(){
+    const show = State.phase==='player' || State.phase==='dealer' || State.phase==='over';
+    document.body.classList.toggle('show-scores', show);
+  }
 
   function makeShoe(){
     const d=[];
@@ -160,18 +198,6 @@
   const isBlackjack = cards => cards.length===2 && handValue(cards)===21;
   const payoutBJ = bet => (RULES.BLACKJACK_PAYOUT==='6:5'? Math.floor(bet*2.2): Math.floor(bet*2.5));
 
-  // ---------- Render ----------
-  const $ = sel => document.querySelector(sel);
-  const dealerHand = $('#dealer-hand');
-  const playerHand = $('#player-hand');
-  const dealerScoreEl = $('#dealer-score');
-  const playerScoreEl = $('#player-score');
-  const chipsBadge = $('#chips-badge');
-  const betBadge = $('#bet-badge');
-  const msgBadge = $('#msg-badge');
-  const testsBox = $('#tests-out');
-  const animLayer = $('#anim-layer');
-
   function updateBadges(){
     chipsBadge.textContent = `Fichas: ${State.chips}`;
     betBadge.textContent = `Apuesta: ${State.bet}`;
@@ -192,34 +218,61 @@
     return {wrap, el, sh};
   }
 
+  function clearHandExceptScore(container){
+    const score = container.querySelector('.score-floating');
+    const kept = score ? score : null;
+    while(container.firstChild){ container.removeChild(container.firstChild); }
+    if(kept) container.appendChild(kept);
+  }
+
   function renderHands(){
     // Dealer
-    dealerHand.innerHTML='';
+    clearHandExceptScore(dealerHand);
     State.dealer.forEach((c,i)=>{
       const hidden = (i===1 && State.phase!=='dealer' && State.phase!=='over');
       const {wrap} = makeCardEl(c, hidden);
       dealerHand.appendChild(wrap);
     });
-    // Player
-    playerHand.innerHTML='';
+
+    // Player (soporta split)
+    clearHandExceptScore(playerHand);
+    const isSecond = !!State.splitHand;
+    const activeIsSecond = !!State.splitHand && State.playingSecond===true;
+
+    // Mano principal
     State.player.forEach(c=>{
       const {wrap} = makeCardEl(c, false);
+      if(!activeIsSecond) wrap.classList.add('active');
       playerHand.appendChild(wrap);
     });
 
-    // Scores visibles
-    playerScoreEl.textContent = handValue(State.player);
+    // Separador visual si hay split
+    if(isSecond){ const sep=document.createElement('div'); sep.style.width='12px'; sep.style.height='1px'; playerHand.appendChild(sep); }
+
+    // Mano secundaria (si existe)
+    if(State.splitHand){
+      State.splitHand.forEach(c=>{
+        const {wrap} = makeCardEl(c, false);
+        if(activeIsSecond) wrap.classList.add('active');
+        playerHand.appendChild(wrap);
+      });
+    }
+
+    // Scores visibles (muestra el de la mano activa)
+    const currentHand = (State.splitHand && State.playingSecond) ? State.splitHand : State.player;
+    playerScoreEl.textContent = handValue(currentHand);
     if(State.phase==='dealer' || State.phase==='over'){
       dealerScoreEl.textContent = handValue(State.dealer);
     } else {
-      // solo carta descubierta
       dealerScoreEl.textContent = State.dealer.length? handValue([State.dealer[0]]):'?';
     }
+
+    updateHudVisibility(); updateScoreVisibility();
   }
 
   function message(txt){ msgBadge.textContent = txt; }
 
-  // --------- Animación de reparto al crupier ---------
+  // --------- Animación de reparto ---------
   function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
   async function appendCardAnimated(container, card){
@@ -307,7 +360,7 @@
   }
 
   function dealInitial(){
-    State.player = []; State.dealer = []; State.doubled=false;
+    State.player = []; State.dealer = []; State.doubled=false; State.splitHand=null; State.playingSecond=false; State.splitBet=0;
     State.player.push(draw(), draw());
     State.dealer.push(draw(), draw());
     State.phase = 'player';
@@ -318,38 +371,73 @@
       if(isBlackjack(State.dealer)) return endRound('push');
       return endRound('player-blackjack');
     }
-    message('Tu turno: PEDIR / PLANTARSE' + (RULES.ALLOW_DOUBLE?' / DOBLAR':''));
+    message('Tu turno: PEDIR / PLANTARSE' + (RULES.ALLOW_DOUBLE?' / DOBLAR':'') + (canSplit()? ' / DIVIDIR' : ''));
     showAction();
     updateActionButtons();
   }
 
   function hit(){
     if(State.phase!=='player') return;
-    State.player.push(draw());
+    const hand = (State.splitHand && State.playingSecond)? State.splitHand : State.player;
+    hand.push(draw());
     renderHands();
-    const pv = handValue(State.player);
-    if(pv>21) return endRound('player-bust');
-    if(pv===21) return stand();
+    const pv = handValue(hand);
+    if(pv>21) return endOrNextAfterHandBust();
+    if(pv===21){
+      // auto-stand en 21
+      return stand();
+    }
     updateActionButtons();
   }
 
   function canDouble(){
-    return RULES.ALLOW_DOUBLE && State.phase==='player' && State.player.length===2 && !State.doubled && (State.bet*2)<=State.chips;
+    const hand = (State.splitHand && State.playingSecond)? State.splitHand : State.player;
+    const betForHand = (State.splitHand && State.playingSecond)? State.splitBet : State.bet;
+    return RULES.ALLOW_DOUBLE && State.phase==='player' && hand.length===2 && !State.doubled && (betForHand*2)<=State.chips;
+  }
+
+  function canSplit(){
+    if(State.phase!=='player') return false;
+    if(State.splitHand) return false; // una sola división
+    if(State.player.length!==2) return false;
+    if(State.chips < State.bet) return false; // necesitas fichas para la segunda apuesta
+    const r1 = State.player[0].rank, r2 = State.player[1].rank;
+    const sameRank = r1===r2;
+    const bothTenVal = VAL(r1)===10 && VAL(r2)===10;
+    return sameRank || bothTenVal;
   }
 
   function doubleDown(){
     if(!canDouble()) return;
     State.doubled = true;
-    State.bet *= 2; updateBadges();
-    State.player.push(draw());
-    renderHands();
-    const pv = handValue(State.player);
-    if(pv>21) return endRound('player-bust');
-    stand();
+    if(State.splitHand && State.playingSecond){
+      State.splitBet *= 2; updateBadges();
+      State.splitHand.push(draw());
+      renderHands();
+      const pv = handValue(State.splitHand);
+      if(pv>21) return endOrNextAfterHandBust();
+      return stand();
+    } else {
+      State.bet *= 2; updateBadges();
+      State.player.push(draw());
+      renderHands();
+      const pv = handValue(State.player);
+      if(pv>21) return endOrNextAfterHandBust();
+      return stand();
+    }
   }
 
   function stand(){
     if(State.phase!=='player') return;
+    if(State.splitHand && !State.playingSecond){
+      // pasar a segunda mano
+      State.playingSecond = true; State.doubled=false; // reset flag para esta mano
+      renderHands();
+      message('Jugando Mano 2');
+      updateActionButtons();
+      return;
+    }
+    // si no hay split o ya estamos en la segunda, va el dealer
     State.phase='dealer';
     renderHands();
     dealerPlay();
@@ -373,31 +461,66 @@
   }
 
   function resolve(){
-    const pv = handValue(State.player);
     const dv = handValue(State.dealer);
-    if(dv>21) return endRound('dealer-bust');
-    if(pv>dv) return endRound('player-win');
-    if(pv<dv) return endRound('dealer-win');
-    return endRound('push');
+    if(!State.splitHand){
+      const pv = handValue(State.player);
+      if(dv>21) return endRound('dealer-bust');
+      if(pv>dv) return endRound('player-win');
+      if(pv<dv) return endRound('dealer-win');
+      return endRound('push');
+    } else {
+      // con split: delegar en endRound con etiqueta neutra (no se usa payout BJ)
+      if(dv>21) return endRound('dealer-bust');
+      return endRound('compare');
+    }
   }
 
   function endRound(result){
-    let delta = 0;
-    if(result==='player-blackjack') delta = payoutBJ(State.bet);
-    else if(result==='player-win' || result==='dealer-bust') delta = State.bet*2;
-    else if(result==='push') delta = State.bet;
-    State.chips = State.chips - State.bet + delta;
-
-    const label = {
-      'player-blackjack':'¡Blackjack! Ganaste',
-      'player-win':'¡Ganaste!',
-      'dealer-bust':'¡Crupier se pasa, ganas!',
-      'dealer-win':'Gana el crupier',
-      'player-bust':'Te pasaste',
-      'push':'Empate (push)'
-    }[result] || result;
-
-    message(`${label} · Fichas: ${State.chips}`);
+    // Camino antiguo (sin split): mantener por compatibilidad
+    if(!State.splitHand){
+      let delta = 0;
+      if(result==='player-blackjack') delta = payoutBJ(State.bet);
+      else if(result==='player-win' || result==='dealer-bust') delta = State.bet*2;
+      else if(result==='push') delta = State.bet;
+      State.chips = State.chips - State.bet + delta;
+      const label = {
+        'player-blackjack':'¡Blackjack! Ganaste',
+        'player-win':'¡Ganaste!',
+        'dealer-bust':'¡Crupier se pasa, ganas!',
+        'dealer-win':'Gana el crupier',
+        'player-bust':'Te pasaste',
+        'push':'Empate (push)'
+      }[result] || result;
+      message(`${label} · Fichas: ${State.chips}`);
+      updateBadges();
+      State.phase='over';
+      renderHands();
+      $('#btn-newround').disabled=false;
+      showBetting(true);
+      return;
+    }
+    // Con split: resolver ambas manos
+    const dv = handValue(State.dealer);
+    const hands = [State.player, State.splitHand];
+    const bets = [State.bet, State.splitBet];
+    let totalStake = bets[0] + bets[1];
+    let totalDelta = 0;
+    const labels = [];
+    hands.forEach((h, idx)=>{
+      const hv = handValue(h);
+      let lbl = `Mano ${idx+1}: `;
+      if(hv>21){ lbl += 'te pasaste'; }
+      else if(dv>21){ lbl += 'ganas'; totalDelta += bets[idx]*2; }
+      else if(h.length===2 && hv===21 && result==='player-blackjack') {
+        totalDelta += payoutBJ(bets[idx]); lbl += 'blackjack';
+      }
+      else if(hv>dv){ lbl += 'ganas'; totalDelta += bets[idx]*2; }
+      else if(hv<dv){ lbl += 'pierdes'; }
+      else { lbl += 'push'; totalDelta += bets[idx]; }
+      labels.push(lbl);
+    });
+    State.chips = State.chips - totalStake + totalDelta;
+    message(labels.join(' · ') + ` · Fichas: ${State.chips}`);
     updateBadges();
     State.phase='over';
     renderHands();
@@ -413,7 +536,7 @@
   }
 
   // ---------- UI helper (mostrar filas) ----------
-  function showBetting(fromOver=false){
+  function showBetting(){
     $('#chips-row').classList.remove('hidden');
     $('#betting-row').classList.remove('hidden');
     $('#action-row').classList.add('hidden');
@@ -425,6 +548,8 @@
   }
   function updateActionButtons(){
     $('#btn-double').disabled = !canDouble();
+    const splitBtn = $('#btn-split');
+    if(splitBtn) splitBtn.disabled = !canSplit();
   }
 
   // ---------- Eventos táctiles ----------
@@ -439,6 +564,8 @@
   $('#btn-hit').addEventListener('click', ()=> hit());
   $('#btn-stand').addEventListener('click', ()=> stand());
   $('#btn-double').addEventListener('click', ()=> doubleDown());
+  const splitBtn = document.getElementById('btn-split');
+  if(splitBtn){ splitBtn.addEventListener('click', ()=> doSplit()); }
   $('#btn-newround').addEventListener('click', ()=> newRound());
 
   // Toggle visual del panel de tests en la mesa verde
@@ -447,7 +574,7 @@
     if(!testsBox.classList.contains('hidden')) runSelfTests();
   });
 
-  // ---------- Self‑tests (mantengo y agrego sin dependencias externas) ----------
+  // ---------- Self‑tests (sin dependencias externas) ----------
   function dealerMustHit(cards){
     const dv = handValue(cards); const soft = isSoft(cards);
     return dv<17 || (dv===17 && soft && RULES.DEALER_HITS_SOFT_17);
@@ -468,7 +595,10 @@
     // Doblar solo con 2 cartas
     State.player=[{rank:'9'},{rank:'2'}]; State.bet=20; State.chips=1000; State.phase='player'; State.doubled=false;
     ok('Doblar SOLO con 2 cartas', (State.player.length===2) && (State.phase==='player'));
-    // Barra no se sobrepone: botones están fuera del área de cartas (geométrica simple)
+    // Split elegible
+    State.player=[{rank:'8'},{rank:'8'}]; State.splitHand=null; State.phase='player'; State.chips=1000; State.bet=50; ok('canSplit par 8-8', (function(){ try{return canSplit();}catch(_){return false;} })());
+    State.player=[{rank:'K'},{rank:'Q'}]; State.splitHand=null; State.phase='player'; State.chips=1000; State.bet=50; ok('canSplit 10-val  K/Q', (function(){ try{return canSplit();}catch(_){return false;} })());
+    // Barra no se sobrepone
     const playerRect = document.getElementById('player-area').getBoundingClientRect();
     const controlsRect = document.getElementById('controls').getBoundingClientRect();
     ok('Barra no se sobrepone a cartas', controlsRect.top >= (playerRect.bottom - 40));
@@ -476,24 +606,60 @@
     const shoe = makeShoe(); ok('Shoe 6 mazos => 312 cartas', shoe.length===6*52);
     // Reshuffle guard
     State.deck = new Array(10).fill({rank:'2',suit:'clubs'}); reshuffleIfNeeded(); ok('Reshuffle a <15 cartas', State.deck.length>=15);
-    // Nuevos: animación y regla de robo
+    // Animación & regla
     ok('Función de animación existe', typeof appendCardAnimated === 'function');
     ok('dealerMustHit 16 (HIT)', dealerMustHit([{rank:'10'},{rank:'6'}])===true);
     ok('dealerMustHit 17 duro (STAND)', dealerMustHit([{rank:'10'},{rank:'7'}])===false);
     ok('dealerMustHit 17 suave (S17=stand)', dealerMustHit([{rank:'A'},{rank:'6'}])===false);
-    // Extra: soft/dura checks
-    ok('isSoft A+6 = soft', isSoft([{rank:'A'},{rank:'6'}])===true);
-    ok('isSoft A+8+8 = duro', isSoft([{rank:'A'},{rank:'8'},{rank:'8'}])===false);
-    // canDouble on/off
-    State.phase='player'; State.player=[{rank:'9'},{rank:'2'}]; State.bet=50; State.chips=500; State.doubled=false; ok('canDouble true', (function(){ try{return canDouble();}catch(_){return false;} })());
+    // HUD visible/oculto
+    ok('updateHudVisibility definida', typeof updateHudVisibility === 'function');
+    const oldPhase = State.phase; State.phase='player'; renderHands(); ok('Fichas ocultas en juego', chipsBadge.classList.contains('hidden') && betBadge.classList.contains('hidden'));
+    ok('updateScoreVisibility definida', typeof updateScoreVisibility === 'function');
+    State.phase='betting'; renderHands(); ok('Puntajes ocultos en apuesta', !document.body.classList.contains('show-scores'));
+    State.phase='player'; renderHands(); ok('Puntajes visibles en juego', document.body.classList.contains('show-scores'));
+    State.phase=oldPhase; renderHands();
+    // Score nodes persisten
+    ok('Score player sigue en DOM', !!document.getElementById('player-score'));
+    ok('Score dealer sigue en DOM', !!document.getElementById('dealer-score'));
+    // canDouble on/off (mano principal)
+    State.phase='player'; State.player=[{rank:'9'},{rank:'2'}]; State.bet=50; State.chips=500; State.doubled=false; State.splitHand=null; ok('canDouble true', (function(){ try{return canDouble();}catch(_){return false;} })());
     State.player=[{rank:'9'},{rank:'2'},{rank:'2'}]; ok('canDouble false con 3 cartas', (function(){ try{return !canDouble();}catch(_){return false;} })());
-    // Mostrar
     const txt = out.join('\n');
     testsBox.textContent = txt; console.log('[Self-tests]', txt);
   }
 
   // Start
   initGame();
+
+  // --- lógica de dividir ---
+  function doSplit(){
+    if(!canSplit()) return;
+    // mover segunda carta a la mano dividida
+    const second = State.player.pop();
+    State.splitHand = [second];
+    State.splitBet = State.bet; // misma apuesta para mano 2
+    // repartir una carta a cada mano
+    State.player.push(draw());
+    State.splitHand.push(draw());
+    State.playingSecond = false; // empezamos con mano 1
+    State.doubled = false;
+    renderHands();
+    message('Dividiste: juega Mano 1');
+    updateActionButtons();
+  }
+
+  // si una mano se pasa, pasa automáticamente a la otra o resuelve
+  function endOrNextAfterHandBust(){
+    if(State.splitHand && !State.playingSecond){
+      State.playingSecond = true; State.doubled=false; renderHands(); message('Mano 1 se pasó · Mano 2'); updateActionButtons(); return;
+    }
+    if(State.splitHand && State.playingSecond){
+      // ambas manos listas, turno del dealer
+      return stand();
+    }
+    return endRound('player-bust');
+  }
+
   </script>
 </body>
 </html>

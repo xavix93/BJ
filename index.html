@@ -23,12 +23,14 @@
     .rules h3{margin:.2rem 0 .6rem;font-size:1.05rem;color:#bbf7d0}
     .rules ul{margin:0;padding-left:18px;line-height:1.45}
     .footer{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:.9rem;opacity:.75}
-    .error{margin-top:10px;color:#fecaca;background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.45);padding:8px 10px;border-radius:12px;display:none}
     @media (max-width:560px){ .btn{min-width:46vw} }
   </style>
 </head>
 <body>
-  <!-- Menú independiente. Sube este archivo como menu.html en el mismo directorio que tu juego. -->
+  <!--
+    Este archivo es el MENÚ principal (index.html).
+    Coloca el juego en un archivo aparte llamado "game.html" (o ajusta el href del botón Jugar).
+  -->
   <div class="root">
     <div class="wrap">
       <div class="title">Blackjack 21</div>
@@ -36,8 +38,8 @@
 
       <div class="panel">
         <div class="row" style="margin-bottom:10px">
-          <!-- El href se auto-ajustará a index.html, game.html, blackjack.html o el que indiques por ?game= -->
-          <a class="btn ac" id="btn-play" href="./index.html">▶ Jugar</a>
+          <!-- Cambia href si tu juego no se llama game.html -->
+          <a class="btn ac" id="btn-play" href="./game.html">▶ Jugar</a>
           <button class="btn" id="btn-rules" type="button">📜 Reglas</button>
           <button class="btn" id="btn-options" type="button">⚙️ Opciones</button>
         </div>
@@ -46,8 +48,8 @@
           <ul>
             <li>Blackjack paga <b>3:2</b>.</li>
             <li>El crupier se <b>planta en 17 suave</b> (S17).</li>
-            <li>Doblar: solo con <b>2 cartas</b> (se reparte 1 carta y pasa al crupier).</li>
-            <li>Sin split / surrender (puedo añadirlos si los necesitas).</li>
+            <li>Doblar: solo con <b>2 cartas</b>; se reparte 1 carta y pasa al crupier.</li>
+            <li>Sin split ni surrender (puedo añadirlos si los necesitas).</li>
           </ul>
         </div>
         <div id="options" class="rules" hidden>
@@ -58,27 +60,20 @@
           </ul>
           <div class="small">Las opciones se guardan en este navegador.</div>
         </div>
-        <div id="menu-error" class="error"></div>
       </div>
 
-      <div class="small">Sugerencia: publica <code>menu.html</code> como inicio en GitHub Pages y enlaza a tu archivo del juego.</div>
+      <div class="small">Publica este <code>index.html</code> en GitHub Pages. El botón Jugar abre <code>game.html</code>.</div>
     </div>
 
     <div class="footer">© Tu Proyecto — Hecho con HTML/CSS/JS</div>
   </div>
 
   <script>
-    // --- Util: leer parámetro ?game=archivo.html para forzar destino ---
-    const params = new URLSearchParams(location.search);
-    const forced = params.get('game');
-    const candidates = forced ? [forced] : ['index.html','game.html','blackjack.html','play.html'];
-
-    const playLink = document.getElementById('btn-play');
+    // Toggle reglas/opciones sin dependencias
     const rulesBtn = document.getElementById('btn-rules');
     const optBtn = document.getElementById('btn-options');
     const rulesBox = document.getElementById('rules');
     const optBox = document.getElementById('options');
-    const errBox = document.getElementById('menu-error');
 
     rulesBtn.addEventListener('click', () => {
       const show = rulesBox.hasAttribute('hidden');
@@ -91,41 +86,25 @@
       rulesBox.setAttribute('hidden', '');
     });
 
-    function setError(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
-
-    async function pickDestination(){
-      // Si se abre como file:// no podemos hacer fetch HEAD de forma fiable
-      if(location.protocol === 'file:'){
-        playLink.href = './index.html';
-        if(forced) playLink.href = forced;
-        return; // confiar en estructura local
-      }
-      for(const c of candidates){
-        try{
-          const res = await fetch(c, { method: 'HEAD' });
-          if(res.ok){ playLink.href = c; return; }
-        }catch(_){ /* ignorar y probar siguiente */ }
-      }
-      // Si nada responde 200, dejamos el primero y mostramos ayuda
-      playLink.href = candidates[0];
-      setError(`No encontré el archivo del juego (probé: ${candidates.join(', ')}). Colócalo junto a menu.html o usa ?game=nombre.html`);
-    }
-
-    pickDestination();
-
-    // Persistencia simple de opciones
+    // Persistencia simple de opciones (ejemplo)
     const ANIM_KEY = 'bj21:animations';
     const SOUND_KEY = 'bj21:sound';
     const animChk = document.getElementById('opt-animations');
     const soundChk = document.getElementById('opt-sound');
 
+    // cargar
     try{
       const a = localStorage.getItem(ANIM_KEY); if(a!==null) animChk.checked = a === '1';
       const s = localStorage.getItem(SOUND_KEY); if(s!==null) soundChk.checked = s === '1';
-    }catch(_){ }
+    }catch(_){ /* ignore */ }
 
-    animChk.addEventListener('change', ()=>{ try{ localStorage.setItem(ANIM_KEY, animChk.checked ? '1' : '0'); }catch(_){} });
-    soundChk.addEventListener('change', ()=>{ try{ localStorage.setItem(SOUND_KEY, soundChk.checked ? '1' : '0'); }catch(_){} });
+    // guardar
+    animChk.addEventListener('change', ()=>{
+      try{ localStorage.setItem(ANIM_KEY, animChk.checked ? '1' : '0'); }catch(_){}
+    });
+    soundChk.addEventListener('change', ()=>{
+      try{ localStorage.setItem(SOUND_KEY, soundChk.checked ? '1' : '0'); }catch(_){}
+    });
   </script>
 </body>
 </html>
